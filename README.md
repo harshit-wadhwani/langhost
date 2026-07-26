@@ -35,7 +35,7 @@ It is **100% compatible** with the LangGraph ecosystem. Existing LangGraph proje
 
 Compatible with:
 
-[LangSmith Studio](https://docs.langchain.com/langsmith/studio) · [langgraph-sdk](https://pypi.org/project/langgraph-sdk/) · [Agent Protocol](https://docs.langchain.com/langsmith/server-api-ref) · [Agent Chat UI](https://github.com/langchain-ai/agent-chat-ui) · MCP · A2A · [AG-UI / CopilotKit](https://www.copilotkit.ai/)
+[LangSmith Studio](https://docs.langchain.com/langsmith/studio) · [langgraph-sdk](https://pypi.org/project/langgraph-sdk/) · [Agent Protocol](https://docs.langchain.com/langsmith/server-api-ref) · [Agent Chat UI](https://github.com/langchain-ai/agent-chat-ui) · [MCP](https://docs.langchain.com/langsmith/server-mcp) · [A2A](https://docs.langchain.com/langsmith/server-a2a) · [AG-UI / CopilotKit](https://www.copilotkit.ai/)
 
 ## Why langhost?
 
@@ -108,7 +108,7 @@ That pulls in `langgraph-runtime-pg` (the open runtime) automatically.
 If you do not already have them running:
 
 ```bash
-docker compose -f https://raw.githubusercontent.com/langhost/langhost/main/docker-compose.yml up -d
+docker compose -f https://github.com/langhost/langhost.git#main:docker-compose.yml up -d
 ```
 
 ### 4. Configure `.env`
@@ -137,7 +137,7 @@ Default port is **31296**. You should see API, Studio, docs, and Agent Chat UI U
 - **API:** `http://127.0.0.1:31296`
 - **Studio:** `https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:31296`
 - **Docs:** `http://127.0.0.1:31296/docs`
-- **Agent Chat UI:** https://agentchat.vercel.app/?apiUrl=http://127.0.0.1:31296&assistantId=agent
+- **Agent Chat UI:** `https://agentchat.vercel.app/?apiUrl=http://127.0.0.1:31296&assistantId=agent`
 
 > Tip: Safari often blocks localhost ↔ Studio. Use `uv run langhost serve --reload --tunnel`.
 
