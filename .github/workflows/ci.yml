@@ -1,0 +1,214 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_call:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/langgraph
+  REDIS_URI: redis://localhost:6379/0
+  LANGGRAPH_RUNTIME_EDITION: pg
+  LG_RUNTIME_PG_TEST: "1"
+  UV_FROZEN: "1"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v9
+        with:
+          enable-cache: true
+          python-version: "3.11"
+
+      - name: Lockfile up to date
+        run: uv lock --check
+
+      - name: Version lockstep
+        run: python3 scripts/check_versions.py
+
+      - name: Sync
+        run: uv sync --group dev
+
+      - name: Ruff format
+        run: uv run ruff format --check libs
+
+      - name: Ruff check
+        run: uv run ruff check libs
+
+      - name: mypy
+        run: uv run mypy
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v9
+        with:
+          enable-cache: true
+          python-version: "3.11"
+
+      - name: Build packages
+        run: |
+          uv build --package langgraph-runtime-pg
+          uv build --package langhost
+          ls -la dist
+
+      - name: Smoke import wheels
+        run: |
+          RUNTIME_WHL="$(ls dist/langgraph_runtime_pg-*.whl | head -n1)"
+          LANGHOST_WHL="$(ls dist/langhost-*.whl | head -n1)"
+          uv run --isolated --no-project --with "${RUNTIME_WHL}" \
+            python -c "import langgraph_runtime_pg; print(langgraph_runtime_pg.__name__)"
+          uv run --isolated --no-project --with "${RUNTIME_WHL}" --with "${LANGHOST_WHL}" \
+            python -c "import langhost; print(langhost.__name__)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      N_JOBS_PER_WORKER: "2"
+      FF_OPTIMIZED_STREAMING: "true"
+      LANGGRAPH_ALLOW_BLOCKING: "true"
+      LANGGRAPH_AUTH_TYPE: noop
+      LG_BG_JOB_HEARTBEAT: "5"
+      LANGGRAPH_INTEGRATION_URL: http://127.0.0.1:2024
+      PYTHONUNBUFFERED: "1"
+      PYTEST_ADDOPTS: "-vv --tb=short --timeout=60 --timeout-method=signal"
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: langgraph
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d langgraph"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v9
+        with:
+          enable-cache: true
+          python-version: "3.11"
+
+      - name: Sync
+        run: uv sync --group dev
+
+      - name: Resolve upstream SDK ref
+        id: upstream
+        run: |
+          SDK_VERSION="$(uv run python -c 'import importlib.metadata as m; print(m.version("langgraph-sdk"))')"
+          echo "ref=sdk==${SDK_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "langgraph-sdk=${SDK_VERSION} → sdk==${SDK_VERSION}"
+
+      - name: Checkout langchain-ai/langgraph (SDK tests + graphs)
+        uses: actions/checkout@v7
+        with:
+          repository: langchain-ai/langgraph
+          ref: ${{ steps.upstream.outputs.ref }}
+          path: .tests/langgraph_api
+          sparse-checkout: |
+            libs/sdk-py
+          sparse-checkout-cone-mode: true
+
+      - name: Install upstream SDK + suite deps
+        run: |
+          uv pip install -e .tests/langgraph_api/libs/sdk-py
+          uv pip install "deepagents==0.6.12" "langchain==1.3.14"
+
+      - name: First-party unit/queue tests
+        run: |
+          # Truncates PG — must run before the API server holds DB connections.
+          uv run pytest \
+            libs/langgraph-runtime-pg/tests/test_interface.py \
+            libs/langgraph-runtime-pg/tests/test_queue.py \
+            -o "timeout=30"
+
+      - name: Start langgraph-api (edition=pg)
+        run: |
+          ROOT="$PWD"
+          INTEGRATION_DIR="$ROOT/.tests/langgraph_api/libs/sdk-py/integration"
+          export LANGSERVE_GRAPHS="$(
+            uv run python -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))["graphs"]))' \
+              "${INTEGRATION_DIR}/langgraph.json"
+          )"
+          echo "graphs: ${LANGSERVE_GRAPHS}"
+          echo "LANGSERVE_GRAPHS<<EOF" >> "$GITHUB_ENV"
+          echo "${LANGSERVE_GRAPHS}" >> "$GITHUB_ENV"
+          echo "EOF" >> "$GITHUB_ENV"
+          (
+            cd "${INTEGRATION_DIR}"
+            exec uv run --project "${ROOT}" uvicorn langgraph_api.server:app \
+              --host 127.0.0.1 --port 2024 --log-level info
+          ) > /tmp/langgraph-api.log 2>&1 &
+          echo $! > /tmp/langgraph-api.pid
+          for i in $(seq 1 90); do
+            if curl -sf "http://127.0.0.1:2024/ok" >/dev/null; then
+              echo "server ready (${i}s)"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "server failed; log:" >&2
+          tail -n 200 /tmp/langgraph-api.log >&2 || true
+          exit 1
+
+      - name: First-party live-server E2E
+        run: uv run pytest libs/langgraph-runtime-pg/tests/test_e2e.py -o "timeout=60" --reruns 2 --reruns-delay 1
+
+      - name: Upstream SDK integration tests
+        timeout-minutes: 8
+        run: |
+          uv run pytest .tests/langgraph_api/libs/sdk-py/tests/integration \
+            -o "addopts=" -m integration --reruns 2 --reruns-delay 1
+
+      - name: Stop langgraph-api
+        if: always()
+        run: |
+          if [[ -f /tmp/langgraph-api.pid ]]; then
+            kill "$(cat /tmp/langgraph-api.pid)" 2>/dev/null || true
+          fi
+          if [[ -f /tmp/langgraph-api.log ]]; then
+            echo "::group::langgraph-api log (tail)"
+            tail -n 400 /tmp/langgraph-api.log || true
+            echo "::endgroup::"
+          fi
+

@@ -1,0 +1,151 @@
+# Workspace root for the langhost monorepo (https://github.com/langhost/langhost).
+# Publishable packages live under libs/.
+
+[project]
+name = "langhost-workspace"
+version = "0.0.0"
+description = "Workspace root (not published). See https://github.com/langhost/langhost — libs/langhost and libs/langgraph-runtime-pg."
+requires-python = ">=3.11"
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/langhost/langhost"
+Repository = "https://github.com/langhost/langhost"
+Issues = "https://github.com/langhost/langhost/issues"
+
+[dependency-groups]
+dev = [
+    # Workspace packages under test / for local CLI.
+    "langgraph-runtime-pg",
+    "langhost",
+    # Test + lint tooling (not shipped with the libs).
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "pytest-timeout>=2.4.0",
+    "pytest-rerunfailures>=16.4",
+    "httpx>=0.27",
+    "asgi-lifespan>=2.1",
+    "ruff>=0.8",
+    "mypy>=1.14",
+    "pre-commit>=4.0",
+]
+
+[tool.uv.workspace]
+members = ["libs/*"]
+
+[tool.uv.sources]
+langgraph-runtime-pg = { workspace = true }
+langhost = { workspace = true }
+
+# Keep the whole resolver on the frozen upstream set (incl. transitive pulls).
+[tool.uv]
+constraint-dependencies = [
+    "langgraph-api==0.11.1",
+    "langgraph-runtime-inmem==0.31.1",
+    "langgraph-sdk==0.4.2",
+    "langgraph==1.2.9",
+    "langgraph-checkpoint==4.1.1",
+    "langgraph-checkpoint-postgres==3.1.0",
+]
+package = false
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["libs/langgraph-runtime-pg/tests"]
+markers = [
+    "e2e: live-server E2E against LANGGRAPH_INTEGRATION_URL",
+]
+
+# ── Ruff (lint + format) ───────────────────────────────────────────────────
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = [
+    "libs/langgraph-runtime-pg/src",
+    "libs/langgraph-runtime-pg/tests",
+    "libs/langhost/src",
+]
+extend-exclude = [
+    ".tests",
+    ".cache",
+    "libs/langgraph-runtime-pg/src/langgraph_runtime_pg/migrations/versions",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "UP",     # pyupgrade
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+    "RUF",    # ruff-specific
+    "ASYNC",  # flake8-async
+    "T20",    # flake8-print (no debug prints)
+    "PERF",   # perflint
+    "PTH",    # flake8-use-pathlib
+]
+ignore = [
+    "E501",      # line length handled by formatter
+    "B008",      # function calls in defaults (FastAPI / CLI patterns)
+    "SIM105",    # try/except/pass is clearer in teardown / best-effort paths
+    "SIM108",    # ternary vs if/else — readability preference
+    "ASYNC109",  # timeout kwargs are intentional Redis/queue wait APIs
+    "PERF401",   # list.append loops preferred for clarity here
+    "RUF012",    # mutable class attrs (SQLAlchemy / pydantic patterns)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"libs/langgraph-runtime-pg/tests/**" = ["T20", "B011", "PTH"]
+"libs/langgraph-runtime-pg/src/langgraph_runtime_pg/migrate.py" = ["T20"]
+"libs/langgraph-runtime-pg/src/langgraph_runtime_pg/migrations/**" = ["INP001", "T20"]
+"libs/langhost/src/langhost/**" = ["T20"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["langgraph_runtime_pg", "langhost"]
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+
+# ── mypy ───────────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "libs/langgraph-runtime-pg/src:libs/langhost/src"
+packages = ["langgraph_runtime_pg", "langhost"]
+explicit_package_bases = true
+pretty = true
+show_error_codes = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+strict_equality = true
+# Incremental strictness: annotated defs are checked; untyped bodies follow later.
+check_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_defs = false
+warn_return_any = false
+exclude = [
+    "(?x)(^libs/langgraph-runtime-pg/src/langgraph_runtime_pg/migrations/versions/)",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "langgraph.*",
+    "langgraph_api.*",
+    "langgraph_sdk.*",
+    "langgraph_cli.*",
+    "croniter",
+    "orjson",
+    "psycopg_pool",
+    "psycopg_pool.*",
+]
+ignore_missing_imports = true

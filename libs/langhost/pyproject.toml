@@ -1,0 +1,72 @@
+[project]
+name = "langhost"
+# Lockstep with langgraph-runtime-pg: same X.Y.Z / X.Y.Z.postN (tracks langgraph-api).
+version = "0.11.1"
+description = "Minimal CLI for self-hosted LangGraph Agent Server on langgraph-runtime-pg"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "Mohankumar Ramachandran", email = "mail@mohanram.dev" }]
+keywords = [
+    "langgraph",
+    "langsmith",
+    "langchain",
+    "langgraph-api",
+    "langgraph-sdk",
+    "agent-server",
+    "agent-protocol",
+    "ai-agents",
+    "agents",
+    "llm",
+    "self-hosted",
+    "open-source",
+    "cli",
+    "postgres",
+    "redis",
+    "uvicorn",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = [
+    "click>=8.1.7",
+    "python-dotenv>=0.8.0",
+    "pyfiglet>=1.0.0",
+    "langgraph-cli>=0.4.0,<0.5",
+    "uvicorn[standard]>=0.30",
+    # Exact same version as this package / langgraph-runtime-pg (lockstep releases).
+    "langgraph-runtime-pg==0.11.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/langhost/langhost"
+Repository = "https://github.com/langhost/langhost"
+Issues = "https://github.com/langhost/langhost/issues"
+Changelog = "https://github.com/langhost/langhost/releases"
+
+[project.scripts]
+langhost = "langhost.cli:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/langhost"]
+
+[tool.uv.sources]
+langgraph-runtime-pg = { workspace = true }

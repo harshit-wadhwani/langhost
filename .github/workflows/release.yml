@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # Full lint / build / e2e must pass before any upload.
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    name: Publish to PyPI
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: pypi
+    permissions:
+      contents: write # GitHub Release
+      id-token: write # PyPI Trusted Publishing (OIDC)
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v9
+        with:
+          enable-cache: true
+          python-version: "3.11"
+
+      - name: Lockfile + version lockstep
+        run: |
+          uv lock --check
+          python3 scripts/check_versions.py
+
+      - name: Tag matches package versions
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          RUNTIME="$(uv version --package langgraph-runtime-pg --short)"
+          LANGHOST="$(uv version --package langhost --short)"
+          echo "tag=${TAG} runtime=${RUNTIME} langhost=${LANGHOST}"
+          if [[ "${TAG}" != "${RUNTIME}" || "${TAG}" != "${LANGHOST}" ]]; then
+            echo "Tag v${TAG} must match both package versions (got runtime=${RUNTIME}, langhost=${LANGHOST})" >&2
+            exit 1
+          fi
+
+      - name: Build
+        run: |
+          rm -rf dist
+          uv build --package langgraph-runtime-pg
+          uv build --package langhost
+          ls -la dist
+
+      - name: Smoke import wheels
+        run: |
+          RUNTIME_WHL="$(ls dist/langgraph_runtime_pg-*.whl | head -n1)"
+          LANGHOST_WHL="$(ls dist/langhost-*.whl | head -n1)"
+          uv run --isolated --no-project --with "${RUNTIME_WHL}" \
+            python -c "import langgraph_runtime_pg; print(langgraph_runtime_pg.__name__)"
+          uv run --isolated --no-project --with "${RUNTIME_WHL}" --with "${LANGHOST_WHL}" \
+            python -c "import langhost; print(langhost.__name__)"
+
+      - name: Publish to PyPI
+        run: uv publish --trusted-publishing always
+
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VER="$(uv version --package langgraph-runtime-pg --short)"
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "v${VER}" \
+            --generate-notes \
+            dist/*
