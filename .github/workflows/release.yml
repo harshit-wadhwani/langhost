@@ -86,13 +86,14 @@ jobs:
           name: dist
           path: dist
 
+      # No checkout here — disable cache so post-setup does not fail the job.
       - uses: astral-sh/setup-uv@v9.0.0
         with:
-          enable-cache: true
+          enable-cache: false
           python-version: "3.11"
 
       - name: Publish langhost to PyPI
-        run: uv publish --trusted-publishing always dist/langhost-*
+        run: uv publish --trusted-publishing always --check-url https://pypi.org/simple/ dist/langhost-*
 
   publish-runtime:
     name: Publish langgraph-runtime-pg
@@ -109,13 +110,14 @@ jobs:
           name: dist
           path: dist
 
+      # No checkout here — disable cache so post-setup does not fail the job.
       - uses: astral-sh/setup-uv@v9.0.0
         with:
-          enable-cache: true
+          enable-cache: false
           python-version: "3.11"
 
       - name: Publish langgraph-runtime-pg to PyPI
-        run: uv publish --trusted-publishing always dist/langgraph_runtime_pg-*
+        run: uv publish --trusted-publishing always --check-url https://pypi.org/simple/ dist/langgraph_runtime_pg-*
 
   github-release:
     name: GitHub Release
@@ -126,24 +128,18 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v7
-
       - uses: actions/download-artifact@v7
         with:
           name: dist
           path: dist
 
-      - uses: astral-sh/setup-uv@v9.0.0
-        with:
-          enable-cache: true
-          python-version: "3.11"
-
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VER="$(uv version --package langgraph-runtime-pg --short)"
+          VER="${GITHUB_REF_NAME#v}"
           gh release create "${GITHUB_REF_NAME}" \
             --title "v${VER}" \
             --generate-notes \
+            --repo "${{ github.repository }}" \
             dist/*
