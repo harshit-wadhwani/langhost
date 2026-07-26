@@ -73,7 +73,10 @@ Both packages ship in **lockstep** (`langhost` and `langgraph-runtime-pg` share 
 
 ### One-time PyPI + GitHub setup
 
-- Create a GitHub Environment named **`pypi`** (Settings → Environments) with **required reviewers** so a human must approve before upload.
-- On each PyPI project (`langhost`, `langgraph-runtime-pg`): Publishing → Trusted Publishers → add this repo, workflow `release.yml`, environment `pypi`.
+- Create GitHub Environments **`pypi-langhost`** and **`pypi-runtime`** (Settings → Environments) with **required reviewers** so a human must approve before each upload.
+- Pending / trusted publishers (same repo + workflow `release.yml`, different environments):
+  - `langhost` → environment `pypi-langhost`
+  - `langgraph-runtime-pg` → environment `pypi-runtime`
 - Protect `main`: require the **Lint**, **Build**, and **Test** status checks before merge.
-- The Release workflow runs the full CI suite first; publish only proceeds after CI is green and the `pypi` environment is approved.
+- The Release workflow runs the full CI suite first; each package publishes only after CI is green and its environment is approved.
+
