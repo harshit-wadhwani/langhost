@@ -1053,7 +1053,7 @@ wheels = [
 
 [[package]]
 name = "langgraph-runtime-pg"
-version = "0.11.1"
+version = "0.11.1.post1"
 source = { editable = "libs/langgraph-runtime-pg" }
 dependencies = [
     { name = "alembic" },
@@ -1102,7 +1102,7 @@ wheels = [
 
 [[package]]
 name = "langhost"
-version = "0.11.1"
+version = "0.11.1.post1"
 source = { editable = "libs/langhost" }
 dependencies = [
     { name = "click" },
