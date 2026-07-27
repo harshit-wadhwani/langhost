@@ -11,7 +11,7 @@ from typing import Any
 
 import click
 from dotenv import load_dotenv
-from langgraph_api.cli import run_server
+from langgraph_api.cli import _resolve_port, run_server
 from langgraph_cli.config import validate_config_file
 from langgraph_cli.constants import DEFAULT_CONFIG
 from pyfiglet import figlet_format
@@ -306,6 +306,7 @@ def serve(
         os.environ.get("MOUNT_PREFIX") or os.environ.get("LANGGRAPH_MOUNT_PREFIX") or mount_prefix
     )
 
+    port = _resolve_port(host, port)
     welcome = _langhost_welcome(
         host=host,
         port=port,
