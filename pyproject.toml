@@ -52,7 +52,10 @@ package = false
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-testpaths = ["libs/langgraph-runtime-pg/tests"]
+testpaths = [
+    "libs/langgraph-runtime-pg/tests",
+    "libs/langhost/tests",
+]
 markers = [
     "e2e: live-server E2E against LANGGRAPH_INTEGRATION_URL",
 ]
@@ -65,6 +68,7 @@ src = [
     "libs/langgraph-runtime-pg/src",
     "libs/langgraph-runtime-pg/tests",
     "libs/langhost/src",
+    "libs/langhost/tests",
 ]
 extend-exclude = [
     ".tests",

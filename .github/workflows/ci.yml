@@ -160,6 +160,7 @@ jobs:
           uv run pytest \
             libs/langgraph-runtime-pg/tests/test_interface.py \
             libs/langgraph-runtime-pg/tests/test_queue.py \
+            libs/langhost/tests/test_cli.py \
             -o "timeout=30"
 
       - name: Start langgraph-api (edition=pg)
@@ -212,4 +213,3 @@ jobs:
             tail -n 400 /tmp/langgraph-api.log || true
             echo "::endgroup::"
           fi
-
