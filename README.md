@@ -6,6 +6,10 @@
 </p>
 
 <p align="center">
+  <strong>Independent project; not affiliated with or endorsed by LangChain.</strong>
+</p>
+
+<p align="center">
   <a href="https://github.com/langhost/langhost/stargazers"><img src="https://img.shields.io/github/stars/langhost/langhost?style=social" alt="GitHub stars"></a>
   &nbsp;
   <a href="https://github.com/langhost/langhost/actions/workflows/ci.yml"><img src="https://github.com/langhost/langhost/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
