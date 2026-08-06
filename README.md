@@ -66,15 +66,15 @@ Compatible with:
 
 ## Why langhost?
 
-| | `langgraph dev` | LangSmith Deployments | **langhost** |
-|:--|:--|:--|:--|
-| **Best for** | Quick local experiments | Managed / licensed prod | Self-hosted prod on your infra |
-| **Storage** | In-memory / local | Closed Postgres + Redis | **Open MIT Postgres + Redis** |
-| **HTTP stack** | Official Agent Server | Official Agent Server | **Official `langgraph-api`** |
-| **Studio / SDK** | Yes | Yes | **Yes — same clients** |
-| **License key for runtime** | N/A | Often required | **None (MIT)** |
+| | `langgraph dev` | LangSmith Deployments | [Aegra](https://github.com/aegra/aegra) | **langhost** |
+|:--|:--|:--|:--|:--|
+| **Best for** | Quick local experiments | Managed / licensed prod | Open, customizable server stack | Official server on your infra |
+| **Storage** | In-memory / local | Closed Postgres + Redis | Open Apache-2.0 Postgres + Redis | **Open MIT Postgres + Redis** |
+| **HTTP stack** | Official Agent Server | Official Agent Server | Independent FastAPI implementation | **Official `langgraph-api`** |
+| **Studio / SDK** | Yes | Yes | Yes — compatible clients | **Yes — same clients** |
+| **License key for runtime** | N/A | Often required | None (Apache-2.0) | **None (MIT)** |
 
-Official [`langgraph dev`](https://docs.langchain.com/oss/python/langgraph/local-server) is perfect for in-memory development. **langhost** is the open-source path when you want that same Agent Server experience with durable state.
+Official [`langgraph dev`](https://docs.langchain.com/oss/python/langgraph/local-server) is perfect for in-memory development. [Aegra](https://github.com/aegra/aegra) reimplements the Agent Protocol serving layer as an open FastAPI stack. **langhost** takes a narrower, compatibility-first approach: it keeps the stock `langgraph-api` server and replaces its closed persistence runtime, giving you the official Agent Server experience with durable state.
 
 ## How it fits together
 
