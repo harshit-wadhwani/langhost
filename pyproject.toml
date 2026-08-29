@@ -29,6 +29,14 @@ dev = [
     "mypy>=1.14",
     "pre-commit>=4.0",
 ]
+ci = [
+    # Dependencies imported by the upstream SDK integration graphs.
+    # Keep these lock-managed so new adapter releases cannot drift CI.
+    "deepagents==0.6.12",
+    "langchain==1.3.14",
+    "langchain-anthropic==1.5.0",
+    "langchain-google-genai==4.3.1",
+]
 
 [tool.uv.workspace]
 members = ["libs/*"]
