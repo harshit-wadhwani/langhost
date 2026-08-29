@@ -165,7 +165,7 @@ jobs:
       - name: First-party unit/queue tests
         run: |
           # Truncates PG — must run before the API server holds DB connections.
-          uv run --no-sync pytest \
+          uv run --no-build --no-sync pytest \
             libs/langgraph-runtime-pg/tests/test_interface.py \
             libs/langgraph-runtime-pg/tests/test_queue.py \
             libs/langhost/tests/test_cli.py \
@@ -202,12 +202,12 @@ jobs:
 
       - name: First-party live-server E2E
         timeout-minutes: 8
-        run: uv run --no-sync pytest libs/langgraph-runtime-pg/tests/test_e2e.py -o "timeout=60" --reruns 2 --reruns-delay 1
+        run: uv run --no-build --no-sync pytest libs/langgraph-runtime-pg/tests/test_e2e.py -o "timeout=60" --reruns 2 --reruns-delay 1
 
       - name: Upstream SDK integration tests
         timeout-minutes: 8
         run: |
-          uv run --no-sync pytest .tests/langgraph_api/libs/sdk-py/tests/integration \
+          uv run --no-build --no-sync pytest .tests/langgraph_api/libs/sdk-py/tests/integration \
             -o "addopts=" -m integration --reruns 2 --reruns-delay 1
 
       - name: Stop langgraph-api
